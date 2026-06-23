@@ -1,40 +1,16 @@
-
-
-
-name: Test Secrets - DockerHub
+name: Secret check single
 
 on:
   push:
     branches: ["main"]
 
 jobs:
-  test-secrets:
+  check:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Check secrets via env + fail loudly
+      - name: Print secret length (env)
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_USER: ${{ secrets.EC2_USER }}
-          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
         run: |
-          echo "DOCKERHUB_USERNAME length:"
+          echo "len:"
           echo "${DOCKERHUB_USERNAME}" | wc -c
-          echo "DOCKERHUB_TOKEN length:"
-          echo "${DOCKERHUB_TOKEN}" | wc -c
-          echo "EC2_HOST length:"
-          echo "${EC2_HOST}" | wc -c
-          echo "EC2_USER length:"
-          echo "${EC2_USER}" | wc -c
-          echo "EC2_SSH_KEY length:"
-          echo "${EC2_SSH_KEY}" | wc -c
-
-          if [ -z "${DOCKERHUB_USERNAME}" ]; then echo "DOCKERHUB_USERNAME is empty"; exit 1; fi
-          if [ -z "${DOCKERHUB_TOKEN}" ]; then echo "DOCKERHUB_TOKEN is empty"; exit 1; fi
-
-          echo "${DOCKERHUB_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
