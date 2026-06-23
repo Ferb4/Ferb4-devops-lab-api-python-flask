@@ -1,21 +1,3 @@
-<<<<<<< HEAD
-name: Secret check single
-
-on:
-  push:
-    branches: ["main"]
-
-jobs:
-  check:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Print secret length (env)
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-        run: |
-          echo "len:"
-          echo "${DOCKERHUB_USERNAME}" | wc -c
-=======
 name: Build and Push to ECR
 
 on:
@@ -63,9 +45,6 @@ jobs:
 
       - name: Push image
         run: |
-          docker push \
-          ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:${{ github.sha }}
+          docker push ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:${{ github.sha }}
+          docker push ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:latest
 
-          docker push \
-          ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:latest
->>>>>>> 0715db7 (Add GitHub Actions workflow)
