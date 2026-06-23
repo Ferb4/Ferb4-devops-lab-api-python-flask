@@ -1,52 +1,40 @@
-name: Build and Deploy to EC2
+
+
+
+name: Test Secrets - DockerHub
 
 on:
   push:
     branches: ["main"]
 
 jobs:
-  build-and-deploy:
+  test-secrets:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Show whether secrets are available (no values)
+      - name: Check secrets via env + fail loudly
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
         run: |
           echo "DOCKERHUB_USERNAME length:"
-          echo "${{ secrets.DOCKERHUB_USERNAME }}" | wc -c
+          echo "${DOCKERHUB_USERNAME}" | wc -c
+          echo "DOCKERHUB_TOKEN length:"
+          echo "${DOCKERHUB_TOKEN}" | wc -c
+          echo "EC2_HOST length:"
+          echo "${EC2_HOST}" | wc -c
+          echo "EC2_USER length:"
+          echo "${EC2_USER}" | wc -c
+          echo "EC2_SSH_KEY length:"
+          echo "${EC2_SSH_KEY}" | wc -c
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+          if [ -z "${DOCKERHUB_USERNAME}" ]; then echo "DOCKERHUB_USERNAME is empty"; exit 1; fi
+          if [ -z "${DOCKERHUB_TOKEN}" ]; then echo "DOCKERHUB_TOKEN is empty"; exit 1; fi
 
-      - name: Check DockerHub secrets exist
-        run: |
-          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ]; then echo "DOCKERHUB_USERNAME is empty"; exit 1; fi
-          if [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then echo "DOCKERHUB_TOKEN is empty"; exit 1; fi
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and Push image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/flask-api:latest
-
-      - name: Deploy to EC2 via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          script: |
-            set -e
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/flask-api:latest
-            docker rm -f flask-api || true
-            docker run -d --name flask-api -p 8080:8080 ${{ secrets.DOCKERHUB_USERNAME }}/flask-api:latest
+          echo "${DOCKERHUB_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
