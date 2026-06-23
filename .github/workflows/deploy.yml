@@ -19,10 +19,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Debug secret injection (check if expression expands)
-  run: |
-    echo "expr AWS_ACCESS_KEY_ID empty? -> ${{ secrets.AWS_ACCESS_KEY_ID == '' }}"
-    echo "expr AWS_SECRET_ACCESS_KEY empty? -> ${{ secrets.AWS_SECRET_ACCESS_KEY == '' }}"
+      - name: Debug run context
+        run: |
+          echo "GITHUB_REPOSITORY=$GITHUB_REPOSITORY"
+          echo "GITHUB_REF=$GITHUB_REF"
+          echo "GITHUB_SHA=$GITHUB_SHA"
+
+      - name: Debug secret injection (expression expansion)
+        run: |
+          echo "expr AWS_ACCESS_KEY_ID empty? -> ${{ secrets.AWS_ACCESS_KEY_ID == '' }}"
+          echo "expr AWS_SECRET_ACCESS_KEY empty? -> ${{ secrets.AWS_SECRET_ACCESS_KEY == '' }}"
+          echo "expr AWS_ACCESS_KEY_ID set? -> ${{ secrets.AWS_ACCESS_KEY_ID != '' }}"
+          echo "expr AWS_SECRET_ACCESS_KEY set? -> ${{ secrets.AWS_SECRET_ACCESS_KEY != '' }}"
+
+      - name: Validate secrets (fail fast)
+        run: |
+          test -n "${{ secrets.AWS_ACCESS_KEY_ID }}" || (echo "AWS_ACCESS_KEY_ID MISSING" && exit 1)
+          test -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" || (echo "AWS_SECRET_ACCESS_KEY MISSING" && exit 1)
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
