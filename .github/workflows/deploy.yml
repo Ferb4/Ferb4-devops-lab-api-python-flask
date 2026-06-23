@@ -19,10 +19,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Validate secrets
-        run: |
-          test -n "${{ secrets.AWS_ACCESS_KEY_ID }}" || (echo "AWS_ACCESS_KEY_ID MISSING" && exit 1)
-          test -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" || (echo "AWS_SECRET_ACCESS_KEY MISSING" && exit 1)
+      - name: Debug secret injection (check if expression expands)
+  run: |
+    echo "expr AWS_ACCESS_KEY_ID empty? -> ${{ secrets.AWS_ACCESS_KEY_ID == '' }}"
+    echo "expr AWS_SECRET_ACCESS_KEY empty? -> ${{ secrets.AWS_SECRET_ACCESS_KEY == '' }}"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
