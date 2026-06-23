@@ -2,7 +2,7 @@ name: Build and Deploy to EC2
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build-and-deploy:
@@ -40,4 +40,3 @@ jobs:
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/flask-api:latest
             docker rm -f flask-api || true
             docker run -d --name flask-api -p 8080:8080 ${{ secrets.DOCKERHUB_USERNAME }}/flask-api:latest
-
