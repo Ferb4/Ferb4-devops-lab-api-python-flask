@@ -43,6 +43,7 @@ resource "aws_security_group" "lab_sg" {
   description = "DevOps Lab Security Group"
 
   ingress {
+    description = "SSH"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
@@ -50,6 +51,7 @@ resource "aws_security_group" "lab_sg" {
   }
 
   ingress {
+    description = "Application"
     from_port   = 8080
     to_port     = 8080
     protocol    = "tcp"
@@ -61,6 +63,10 @@ resource "aws_security_group" "lab_sg" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "devops-lab-sg"
   }
 }
 
@@ -83,19 +89,25 @@ resource "aws_instance" "lab" {
   user_data = <<-EOF
 #!/bin/bash
 apt-get update -y
-apt-get install -y docker.io
+apt-get install -y docker.io awscli
 systemctl enable docker
 systemctl start docker
+usermod -aG docker admin
 EOF
 
   tags = {
     Name = "devops-lab"
   }
 }
+
 resource "aws_ecr_repository" "api" {
   name = "devops-lab-api"
 
   image_scanning_configuration {
     scan_on_push = true
+  }
+
+  tags = {
+    Name = "devops-lab-api"
   }
 }

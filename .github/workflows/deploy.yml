@@ -1,4 +1,4 @@
-name: Build and Push to ECR
+name: Build Push and Deploy
 
 on:
   push:
@@ -6,11 +6,11 @@ on:
       - main
 
 env:
+  AWS_REGION: us-east-1
   ECR_REPOSITORY: devops-lab-api
 
 jobs:
-  build-and-push:
-    name: Build Docker Image
+  deploy:
     runs-on: ubuntu-latest
 
     environment: test
@@ -19,14 +19,8 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout source
         uses: actions/checkout@v4
-
-      - name: Verify Environment Secrets
-        run: |
-          test -n "${{ secrets.AWS_ACCESS_KEY_ID }}" || (echo "AWS_ACCESS_KEY_ID missing" && exit 1)
-          test -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" || (echo "AWS_SECRET_ACCESS_KEY missing" && exit 1)
-          echo "Environment secrets loaded successfully"
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -35,15 +29,15 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Login to Amazon ECR
+      - name: Login to ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build Docker Image
+      - name: Build image
         run: |
           docker build -t $ECR_REPOSITORY .
 
-      - name: Tag Docker Image
+      - name: Tag image
         run: |
           docker tag $ECR_REPOSITORY:latest \
           ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:${{ github.sha }}
@@ -51,21 +45,36 @@ jobs:
           docker tag $ECR_REPOSITORY:latest \
           ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:latest
 
-      - name: Push Commit Image
+      - name: Push image SHA
         run: |
           docker push \
           ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:${{ github.sha }}
 
-      - name: Push Latest Image
+      - name: Push image latest
         run: |
           docker push \
           ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:latest
 
-      - name: Deploy to EC2
+      - name: Deploy on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           script: |
-            docker ps
+            aws ecr get-login-password --region us-east-1 \
+            | sudo docker login \
+              --username AWS \
+              --password-stdin 899535646917.dkr.ecr.us-east-1.amazonaws.com
+
+            sudo docker stop devops-api || true
+            sudo docker rm devops-api || true
+
+            sudo docker pull \
+              899535646917.dkr.ecr.us-east-1.amazonaws.com/devops-lab-api:latest
+
+            sudo docker run -d \
+              --restart unless-stopped \
+              --name devops-api \
+              -p 8080:8080 \
+              899535646917.dkr.ecr.us-east-1.amazonaws.com/devops-lab-api:latest
