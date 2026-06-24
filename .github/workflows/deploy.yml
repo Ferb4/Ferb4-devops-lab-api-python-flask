@@ -10,49 +10,40 @@ env:
 
 jobs:
   build-and-push:
+    name: Build Docker Image
     runs-on: ubuntu-latest
+
+    environment: test
 
     permissions:
       contents: read
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Debug run context
+      - name: Verify Environment Secrets
         run: |
-          echo "GITHUB_REPOSITORY=$GITHUB_REPOSITORY"
-          echo "GITHUB_REF=$GITHUB_REF"
-          echo "GITHUB_SHA=$GITHUB_SHA"
+          test -n "${{ secrets.AWS_ACCESS_KEY_ID }}" || (echo "AWS_ACCESS_KEY_ID missing" && exit 1)
+          test -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" || (echo "AWS_SECRET_ACCESS_KEY missing" && exit 1)
+          echo "Environment secrets loaded successfully"
 
-      - name: Debug secret injection (expression expansion)
-        run: |
-          echo "expr AWS_ACCESS_KEY_ID empty? -> ${{ secrets.AWS_ACCESS_KEY_ID == '' }}"
-          echo "expr AWS_SECRET_ACCESS_KEY empty? -> ${{ secrets.AWS_SECRET_ACCESS_KEY == '' }}"
-          echo "expr AWS_ACCESS_KEY_ID set? -> ${{ secrets.AWS_ACCESS_KEY_ID != '' }}"
-          echo "expr AWS_SECRET_ACCESS_KEY set? -> ${{ secrets.AWS_SECRET_ACCESS_KEY != '' }}"
-
-      - name: Validate secrets (fail fast)
-        run: |
-          test -n "${{ secrets.AWS_ACCESS_KEY_ID }}" || (echo "AWS_ACCESS_KEY_ID MISSING" && exit 1)
-          test -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" || (echo "AWS_SECRET_ACCESS_KEY MISSING" && exit 1)
-
-      - name: Configure AWS credentials
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build Docker image
+      - name: Build Docker Image
         run: |
           docker build -t $ECR_REPOSITORY .
 
-      - name: Tag image
+      - name: Tag Docker Image
         run: |
           docker tag $ECR_REPOSITORY:latest \
           ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:${{ github.sha }}
@@ -60,8 +51,12 @@ jobs:
           docker tag $ECR_REPOSITORY:latest \
           ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:latest
 
-      - name: Push image
+      - name: Push Commit Image
         run: |
-          docker push ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:${{ github.sha }}
-          docker push ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:latest
+          docker push \
+          ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:${{ github.sha }}
 
+      - name: Push Latest Image
+        run: |
+          docker push \
+          ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:latest
